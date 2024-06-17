@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banker's Algorithm</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: url('https://c0.wallpaperflare.com/preview/76/901/117/accounting-aerial-application-bankbook.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        .container {
+            background-color: rgba(240, 248, 255, 0.548);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .home-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .home-page h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .home-page p {
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="home-page" id="homePage">
+            <h1>Welcome to Banker's Algorithm</h1>
+            <p>It is an algorithm used to avoid deadlock and allocate resources safely to each process in the computer system.When a new process is created in a computer system, the process must provide all types of information to the operating system like upcoming processes, requests for their resources, counting them, and delays. Based on these criteria, the operating system decides which process sequence should be executed or waited so that no deadlock occurs in a system. Therefore, it is also known as deadlock avoidance algorithm or deadlock detection in the operating system.</p><br>
+            <h1 style="color:red;">Developed By:</h1><br>
+            <b>
+                <p>Harish E (22CSR066)</p>
+                <p>Kavin Kumar B (22CSR093)</p>
+                <P>Manojkumar B (22CSR116)</P>
+            </b>
+            <h2>KONGU ENGINEERING COLLEGE</h2>
+            <h3>DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING</h3>
+            <button class="btn btn-primary" onclick="startApp()">Get Started</button>
+        </div>
+
+        <div class="hidden" id="app">
+            <h1>Banker's Algorithm</h1>
+            <div class="form-group">
+                <label for="numProcesses">Number of Processes:</label>
+                <input type="number" id="numProcesses" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="numResources">Number of Resources:</label>
+                <input type="number" id="numResources" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Include Need Matrix:</label>
+                <div class="form-check">
+                    <input type="radio" id="needYes" name="needMatrix" value="yes" class="form-check-input"> Yes
+                </div>
+                <div class="form-check">
+                    <input type="radio" id="needNo" name="needMatrix" value="no" class="form-check-input" checked> No
+                </div>
+            </div>
+            <button class="btn btn-success" onclick="generateTables()">Generate Tables</button>
+
+            <div class="hidden" id="allocationMatrixSection">
+                <h2>Allocation Matrix</h2>
+                <table id="allocationTable" class="table table-bordered"></table>
+            </div>
+            <div class="hidden" id="needMatrixSection">
+                <h2>Need Matrix</h2>
+                <table id="needTable" class="table table-bordered"></table>
+            </div>
+            <div class="hidden" id="availableResourcesSection">
+                <h2>Available Resources</h2>
+                <table id="availableTable" class="table table-bordered"></table>
+            </div>
+            <div class="hidden" id="maximumMatrixSection">
+                <h2>Maximum Matrix</h2>
+                <table id="maximumTable" class="table table-bordered"></table>
+            </div>
+            <button class="btn btn-primary hidden" id="calculateButton" onclick="calculateSafeSequence()">Calculate Safe Sequence</button>
+            <div class="hidden" id="safeSequenceSection">
+                <h2>Safe Sequence</h2>
+                <p id="safeSequence"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function startApp() {
+            document.getElementById('homePage').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+
+        function generateTables() {
+            const numProcesses = parseInt(document.getElementById('numProcesses').value);
+            const numResources = parseInt(document.getElementById('numResources').value);
+            const includeNeedMatrix = document.querySelector('input[name="needMatrix"]:checked').value === 'yes';
+
+            generateTable('allocationTable', numProcesses, numResources);
+            document.getElementById('allocationMatrixSection').classList.remove('hidden');
+
+            if (includeNeedMatrix) {
+                document.getElementById('needMatrixSection').classList.remove('hidden');
+                generateTable('needTable', numProcesses, numResources);
+                document.getElementById('maximumMatrixSection').classList.add('hidden');
+            } else {
+                document.getElementById('needMatrixSection').classList.add('hidden');
+                generateTable('maximumTable', numProcesses, numResources);
+                document.getElementById('maximumMatrixSection').classList.remove('hidden');
+            }
+
+            generateTable('availableTable', 1, numResources);
+            document.getElementById('availableResourcesSection').classList.remove('hidden');
+
+            document.getElementById('calculateButton').classList.remove('hidden');
+            document.getElementById('safeSequenceSection').classList.add('hidden');
+        }
+
+        function generateTable(tableId, rows, cols, isReadOnly = false) {
+            const table = document.getElementById(tableId);
+            table.innerHTML = '';
+            for (let i = 0; i <= rows; i++) {
+                const row = table.insertRow();
+                for (let j = 0; j < cols; j++) {
+                    const cell = row.insertCell();
+                    if (i === 0) {
+                        cell.innerHTML = `R${j}`;
+                    } else {
+                        cell.innerHTML = isReadOnly ? `<input type="number" min="0" class="form-control" readonly>` : `<input type="number" min="0" class="form-control">`;
+                    }
+                }
+            }
+        }
+
+        function getMatrix(tableId) {
+            const table = document.getElementById(tableId);
+            const matrix = [];
+            for (let i = 1, row; row = table.rows[i]; i++) {
+                const rowData = [];
+                for (let j = 0, col; col = row.cells[j]; j++) {
+                    const value = col.children[0].value;
+                    rowData.push(value === '' ? 0 : parseInt(value));
+                }
+                matrix.push(rowData);
+            }
+            return matrix;
+        }
+
+        function getArray(tableId) {
+            const table = document.getElementById(tableId);
+            const row = table.rows[1];
+            const array = [];
+            for (let i = 0, col; col = row.cells[i]; i++) {
+                const value = col.children[0].value;
+                array.push(value === '' ? 0 : parseInt(value));
+            }
+            return array;
+        }
+
+        function calculateSafeSequence() {
+            const allocation = getMatrix('allocationTable');
+            const available = getArray('availableTable');
+            const numProcesses = allocation.length;
+            const numResources = available.length;
+
+            let maximum;
+            if (document.querySelector('input[name="needMatrix"]:checked').value === 'yes') {
+                const need = getMatrix('needTable');
+                maximum = [];
+                for (let i = 0; i < numProcesses; i++) {
+                    maximum[i] = [];
+                    for (let j = 0; j < numResources; j++) {
+                        maximum[i][j] = need[i][j] + allocation[i][j];
+                    }
+                }
+            } else {
+                maximum = getMatrix('maximumTable');
+                const need = [];
+                for (let i = 0; i < numProcesses; i++) {
+                    need[i] = [];
+                    for (let j = 0; j < numResources; j++) {
+                        need[i][j] = maximum[i][j] - allocation[i][j];
+                    }
+                }
+                generateNeedTable(need);
+            }
+
+            const need = [];
+            for (let i = 0; i < numProcesses; i++) {
+                need[i] = [];
+                for (let j = 0; j < numResources; j++) {
+                    need[i][j] = maximum[i][j] - allocation[i][j];
+                }
+            }
+
+            const work = [...available];
+            const finish = Array(numProcesses).fill(false);
+            const safeSequence = [];
+
+            while (safeSequence.length < numProcesses) {
+                let found = false;
+                for (let i = 0; i < numProcesses; i++) {
+                    if (!finish[i]) {
+                        let j;
+                        for (j = 0; j < numResources; j++) {
+                            if (need[i][j] > work[j]) {
+                                break;
+                            }
+                        }
+                        if (j === numResources) {
+                            for (let k = 0; k < numResources; k++) {
+                                work[k] += allocation[i][k];
+                            }
+                            safeSequence.push(i);
+                            finish[i] = true;
+                            found = true;
+                        }
+                    }
+                }
+                if (!found) {
+                    document.getElementById('safeSequence').innerHTML = 'No safe sequence found. Error : Deadlock occured';
+                    document.getElementById('safeSequenceSection').classList.remove('hidden');
+                    return;
+                }
+            }
+            document.getElementById('safeSequence').innerHTML = 'Safe sequence: ' + safeSequence.map(p => 'P' + p).join(', ');
+            document.getElementById('safeSequenceSection').classList.remove('hidden');
+        }
+
+        function generateNeedTable(need) {
+            const needTable = document.getElementById('needTable');
+            needTable.innerHTML = '';
+
+            const numProcesses = need.length;
+            const numResources = need[0].length;
+
+            for (let i = 0; i <= numProcesses; i++) {
+                const row = needTable.insertRow();
+                for (let j = 0; j < numResources; j++) {
+                    const cell = row.insertCell();
+                    if (i === 0) {
+                        cell.innerHTML = `R${j}`;
+                    } else {
+                        cell.innerHTML = need[i - 1][j];
+                    }
+                }
+            }
+            document.getElementById('needMatrixSection').classList.remove('hidden');
+        }
+    </script>
+</body>
+
+</html>
